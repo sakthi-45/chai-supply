@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: Inter, "Segoe UI", Arial, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+}
+
+.workspace .breadcrumb > button,
+.workspace .sidebar-help > button,
+.workspace .breadcrumb > span {
+  display: none;
+}
+
+.category-card:hover .category-photo {
+  transform: scale(1.08);
+}
+
+.inventory-table .table-product i {
+  width: 32px;
+  height: 32px;
+  color: transparent;
+  font-size: 0;
+  background: #f5eee6 url("./assets/milk-product.png") center / contain no-repeat;
+}
+
+@layer base {
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid #d9822b;
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    color: #fff;
+    background: #6f3e25;
+  }
+}

@@ -1,0 +1,3 @@
+export function StatusBadge({ status }) {
+  return <span className={`status-badge [display:inline-flex] [align-items:center] [padding:4px_7px] [border-radius:20px] [color:#74521d] [background:#fcf3df] [font-size:8px] [font-weight:700] [white-space:nowrap] [&.processing]:[color:#466884] [&.processing]:[background:#edf4f8] [&.dispatched]:[color:#466884] [&.dispatched]:[background:#edf4f8] [&.delivered]:[color:#39734f] [&.delivered]:[background:#edf5ee] [&.active]:[color:#39734f] [&.active]:[background:#edf5ee] [&.cancelled]:[color:#9d5248] [&.cancelled]:[background:#f9efed] [&.out]:[color:#9d5248] [&.out]:[background:#f9efed] [&.low]:[color:#91621c] [&.low]:[background:#fbf2df] ${status.toLowerCase()}`}>{status}</span>
+}

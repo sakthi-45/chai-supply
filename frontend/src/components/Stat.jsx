@@ -1,0 +1,5 @@
+import { Icon } from '../components/Icon.jsx'
+
+export function Stat({ icon, label, value, note }) {
+  return <article className="stat-card [position:relative] [min-height:115px] [padding:15px] [display:flex] [flex-direction:column] [align-items:flex-start] [border:1px_solid_var(--border)] [border-radius:8px] [background:white] [&_>_span:nth-child(2)]:[color:#7e736a] [&_>_span:nth-child(2)]:[font-size:9px] [&_>_b]:[margin-top:6px] [&_>_b]:[color:#4c3020] [&_>_b]:[font-family:Georgia,_serif] [&_>_b]:[font-size:24px] [&_>_small]:[margin-top:2px] [&_>_small]:[color:#8c8178] [&_>_small]:[font-size:8px] max-[680px]:[min-height:98px] max-[680px]:[padding:11px] max-[680px]:[&_>_b]:[font-size:20px]"><span className="stat-icon [position:absolute] [top:13px] [right:13px] [display:grid] [width:29px] [height:29px] [place-items:center] [border-radius:7px] [color:var(--brown)] [background:#f5eee7] max-[680px]:[width:25px] max-[680px]:[height:25px] max-[680px]:[top:9px] max-[680px]:[right:9px]"><Icon name={icon} /></span><span>{label}</span><b>{value}</b><small>{note}</small></article>
+}

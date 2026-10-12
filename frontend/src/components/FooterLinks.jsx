@@ -1,0 +1,3 @@
+export function FooterLinks({ title, items, onClick }) {
+  return <div className="footer-links [display:flex] [flex-direction:column] [align-items:flex-start] [gap:6px] [&_>_b]:[margin-bottom:1px] [&_>_b]:[color:#49372a] [&_>_b]:[font-size:8px] [&_>_b]:[text-transform:uppercase] [&_>_b]:[letter-spacing:.4px] [&_button]:[padding:0] [&_button]:[border:0] [&_button]:[background:none] [&_button]:[color:#7f766e] [&_button]:[font-size:8px] [&_button]:[text-align:left] [&_button]:[cursor:pointer] [&_button:hover]:[color:var(--brown)]"><b>{title}</b>{items.map((item) => <button key={item} onClick={() => onClick(item)}>{item}</button>)}</div>
+}

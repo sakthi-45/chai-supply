@@ -1,0 +1,5 @@
+import { Icon } from '../components/Icon.jsx'
+
+export function Benefit({ icon, title, text }) {
+  return <article className="benefit [display:flex] [align-items:center] [gap:10px] [&:nth-child(4)_.benefit-icon]:[color:white] [&:nth-child(4)_.benefit-icon]:[background:var(--green)] [&_>_span:last-child]:[display:flex] [&_>_span:last-child]:[flex-direction:column] [&_b]:[color:#41342a] [&_b]:[font-size:10px] [&_small]:[max-width:180px] [&_small]:[margin-top:3px] [&_small]:[color:#83786f] [&_small]:[font-size:8px] [&_small]:[line-height:1.45] max-[680px]:[align-items:flex-start] max-[680px]:[gap:7px] max-[680px]:[&_b]:[font-size:9px] max-[680px]:[&_small]:[font-size:7px] [&:nth-child(4)_.benefit-icon]:[color:white] [&:nth-child(4)_.benefit-icon]:[background:var(--green)]"><span className="benefit-icon [display:grid] [place-items:center] [width:35px] [height:35px] [flex:0_0_auto] [border-radius:8px] [background:#f5eee7] [color:var(--brown)] max-[680px]:[width:30px] max-[680px]:[height:30px]"><Icon name={icon} /></span><span><b>{title}</b><small>{text}</small></span></article>
+}
