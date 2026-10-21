@@ -17,7 +17,7 @@ function getStripeInstance() {
 }
 
 // POST /create-checkout-session & /api/create-checkout-session
-router.post('/create-checkout-session', async (req, res) => {
+const createCheckoutSessionHandler = async (req, res) => {
   try {
     const stripe = getStripeInstance();
     if (!stripe) {
@@ -218,7 +218,10 @@ router.post('/create-checkout-session', async (req, res) => {
     console.error('Stripe Checkout Error:', error);
     res.status(500).json({ error: error.message || 'Failed to create Stripe checkout session' });
   }
-});
+};
+
+router.post('/create-checkout-session', createCheckoutSessionHandler);
+router.post('/api/create-checkout-session', createCheckoutSessionHandler);
 
 // Helper function to verify and persist payment in MongoDB
 async function processSuccessfulPayment(sessionId) {

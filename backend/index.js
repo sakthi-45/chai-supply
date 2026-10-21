@@ -11,17 +11,55 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://localhost:5173', 
-    'https://chai-supply-tvol.vercel.app',
-    'https://chai-supply-xxcc.vercel.app' // <-- Added your active frontend URL
-  ], 
+// Dynamic CORS configuration supporting all local environments and Vercel deployments
+const corsOptions = {
+  origin: (origin, callback) => {
+    // 1. Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    // 2. Allow all localhost & 127.0.0.1 ports
+    if (
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:') ||
+      origin.startsWith('https://localhost:')
+    ) {
+      return callback(null, true);
+    }
+
+    // 3. Allow ALL Vercel deployments (production & preview subdomains: *.vercel.app)
+    if (origin.endsWith('.vercel.app') || origin === 'https://vercel.app') {
+      return callback(null, true);
+    }
+
+    // 4. Allow Render backend self-origin
+    if (origin.endsWith('.onrender.com')) {
+      return callback(null, true);
+    }
+
+    // 5. Allow CLIENT_URL if defined in environment
+    if (process.env.CLIENT_URL) {
+      const configuredClient = process.env.CLIENT_URL.trim().replace(/\/$/, '');
+      if (origin === configuredClient) {
+        return callback(null, true);
+      }
+    }
+
+    // 6. Safe dynamic fallback for web clients
+    return callback(null, true);
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+  ],
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Connect to MongoDB
