@@ -1,5 +1,8 @@
 import { Brand } from './Brand.jsx'
 
+const chaiSupplyImage =
+  'https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=1200&q=85'
+
 export function AuthLayout({ children }) {
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_25%_65%,_#f7e9db,_transparent_50%),_#fffaf4] px-[30px] max-[680px]:px-4">
@@ -17,13 +20,24 @@ export function AuthLayout({ children }) {
           <p className="max-w-[400px] text-[12px] leading-[1.7] text-[#7e7268]">
             Trusted local suppliers. Fresh deliveries before the first boil. More time for your customers.
           </p>
-          <div className="mt-[30px] flex max-w-[390px] items-center gap-[10px] rounded-lg border border-[#e8ded2] bg-white p-3 shadow-[0_8px_24px_rgba(66,42,26,.07)] max-[680px]:mt-[13px] [&_b]:text-[9px] [&_b]:text-[#49372a] [&_div]:flex [&_div]:flex-1 [&_div]:flex-col [&_div]:gap-[3px] [&_small]:text-[8px] [&_small]:text-[#877c72]">
-            <span className="grid size-[35px] place-items-center rounded-md bg-[#f7eee5] text-[18px]">🥛</span>
-            <div>
-              <b>Tomorrow&apos;s first delivery</b>
-              <small>Fresh milk · Assam tea · Paper cups</small>
+          <div className="relative mt-[26px] flex min-h-[190px] max-w-[430px] items-end overflow-hidden rounded-xl border border-[#e8ded2] shadow-[0_8px_24px_rgba(66,42,26,.12)] max-[680px]:mt-[13px] max-[680px]:min-h-[150px]">
+            <img
+              alt="A cup of chai served with biscuits"
+              className="absolute inset-0 size-full object-cover"
+              src={chaiSupplyImage}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#321d12]/90 via-[#321d12]/20 to-transparent" />
+            <div className="relative z-[1] p-4 text-white max-[680px]:p-3">
+              <p className="text-[9px] font-extrabold uppercase tracking-[.75px] text-[#f4c38c]">
+                Your local wholesale essentials
+              </p>
+              <p className="mt-1 font-serif text-[20px] leading-tight max-[680px]:text-[17px]">
+                Chai, snacks & daily supplies
+              </p>
+              <p className="mt-1 text-[9px] text-white/85">
+                From trusted local vendors, all in one place.
+              </p>
             </div>
-            <span className="text-[8px] font-bold text-[#3f7d58]">On schedule</span>
           </div>
         </div>
         {children}

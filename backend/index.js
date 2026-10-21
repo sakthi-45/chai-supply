@@ -1,24 +1,89 @@
+require('dotenv').config();
 const express = require('express');
-const nodemon = require('nodemon');
 const cors = require('cors');
-const app = express();
 const mongoose = require('mongoose');
+
+const Product = require('./models/Product');
+const initialProducts = require('./data/initialProducts');
+const apiRoutes = require('./routes');
+const paymentRoutes = require('./routes/paymentRoutes');
+
+const app = express();
+const port = process.env.PORT || 5000;
+
 app.use(cors());
 app.use(express.json());
-const port = process.env.PORT || 3000;
 
 // Connect to MongoDB
-mongoose.connect("mongodb://sakthivelmurugadass_db_user:Zk3lIVvum0mZgtaC@ac-bv5r4sm-shard-00-00.tujqh9g.mongodb.net:27017,ac-bv5r4sm-shard-00-01.tujqh9g.mongodb.net:27017,ac-bv5r4sm-shard-00-02.tujqh9g.mongodb.net:27017/?ssl=true&replicaSet=atlas-o7r1zb-shard-0&authSource=admin&appName=Cluster0FF")
-.then(() => {
-  console.log('Connected to MongoDB');
-}).catch((err) => {
-  console.error('Error connecting to MongoDB:', err);
+const mongoUri =
+  process.env.MONGO_URI ||
+  'mongodb://sakthivelmurugadass_db_user:Zk3lIVvum0mZgtaC@ac-bv5r4sm-shard-00-00.tujqh9g.mongodb.net:27017,ac-bv5r4sm-shard-00-01.tujqh9g.mongodb.net:27017,ac-bv5r4sm-shard-00-02.tujqh9g.mongodb.net:27017/?ssl=true&replicaSet=atlas-o7r1zb-shard-0&authSource=admin&appName=Cluster0FF';
+
+mongoose
+  .connect(mongoUri)
+  .then(async () => {
+    console.log('Connected to MongoDB');
+    try {
+      // Ensure all initial catalog products are present in MongoDB without overwriting existing data
+      const ops = initialProducts.map((prod) => ({
+        updateOne: {
+          filter: { productId: prod.productId },
+          update: { $setOnInsert: prod },
+          upsert: true,
+        },
+      }));
+      await Product.bulkWrite(ops);
+      const totalCount = await Product.countDocuments();
+      console.log(`MongoDB catalog verified. ${totalCount} total products ready in database.`);
+
+      // Categorize products by shop names (aligned with frontend's 3 stores)
+      const shopCategoryMap = {
+        'Milk & dairy': 'Fresh Farm Dairy',
+        Snacks: 'Sunrise Snacks',
+        'Tea ingredients': 'TeaLeaf Wholesale',
+        Packaging: 'TeaLeaf Wholesale',
+        'Cleaning & hygiene': 'TeaLeaf Wholesale',
+      };
+      const unassigned = await Product.find({
+        $or: [
+          { shopName: { $exists: false } },
+          { shopName: 'ChaiSupply Wholesale' },
+          { shopName: 'FreshFarm Dairy' },
+          { shopName: 'CityPack Supplies' },
+          { shopName: '' },
+        ],
+      });
+      if (unassigned.length > 0) {
+        for (const p of unassigned) {
+          const shop = shopCategoryMap[p.category] || 'TeaLeaf Wholesale';
+          await Product.updateOne({ _id: p._id }, { $set: { shopName: shop, detail: shop } });
+        }
+        console.log(`Assigned category-specific shop names to ${unassigned.length} catalog products.`);
+      }
+      // Auto-sync all database orders to ensure each has a Payment record
+      if (paymentRoutes.syncMissingOrdersToPayments) {
+        await paymentRoutes.syncMissingOrdersToPayments();
+        console.log('MongoDB orders & payments synchronization verified.');
+      }
+    } catch (seedErr) {
+      console.warn('Auto-seed check error:', seedErr.message);
+    }
+  })
+  .catch((err) => {
+    console.error('Error connecting to MongoDB:', err);
+  });
+
+// Root Health Check Endpoint
+app.get('/', (req, res) => {
+  res.send('ChaiSupply Backend API Running');
 });
 
-app.get('/', (req, res) => {
-  res.send('Hello, World!');
-});
+// Mount API Routes
+app.use('/api', apiRoutes);
+app.use(paymentRoutes); // Root-level fallback for /create-checkout-session
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
+
+module.exports = app;

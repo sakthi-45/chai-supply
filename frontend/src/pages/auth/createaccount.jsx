@@ -3,28 +3,53 @@ import { useState } from 'react'
 import { Icon } from '../../components/Icon.jsx'
 import { AuthLayout } from '../../components/AuthLayout.jsx'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import { auth } from '../../../config/firebase.js'
+import { doc, setDoc } from 'firebase/firestore'
+import { auth, db } from '../../../config/firebase.js'
 
-export function CreateAccount({ role, setRole, onCreateAccount, navigate }) {
+export function CreateAccount({ onCreateAccount, navigate }) {
   const [email, setEmail] = useState('')
   const [businessName, setBusinessName] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [authError, setAuthError] = useState('')
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     setAuthError('')
 
-    if (password !== confirmPassword) {
-      setAuthError('Passwords do not match.')
-      return
-    }
-
     try {
-      const credential = await createUserWithEmailAndPassword(auth, email, password)
+      const cleanEmail = email.trim().toLowerCase()
+      const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password)
       await updateProfile(credential.user, { displayName: businessName.trim() })
-      await onCreateAccount(role, credential.user.uid)
+
+      // Save user record to database
+      try {
+        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: credential.user.uid,
+            email: cleanEmail,
+            displayName: businessName.trim(),
+            password,
+          }),
+        }).catch(() => {})
+
+        setDoc(
+          doc(db, 'users', cleanEmail),
+          {
+            userId: credential.user.uid,
+            email: cleanEmail,
+            displayName: businessName.trim(),
+            password,
+            createdAt: new Date().toISOString(),
+          },
+          { merge: true }
+        ).catch(() => {})
+      } catch {
+        // Ignore background sync errors
+      }
+
+      await onCreateAccount('buyer', credential.user.uid)
     } catch (error) {
       const errorCode =
         error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
@@ -91,25 +116,7 @@ export function CreateAccount({ role, setRole, onCreateAccount, navigate }) {
             {authError}
           </p>
         )}
-        <label className="mt-3 flex flex-col gap-[5px] text-[9px] font-bold text-[#62564c]">
-          I am a
-          <span className="grid grid-cols-2 gap-[3px] rounded-[5px] bg-[#f7f3ef] p-[3px]">
-            <button
-              className={`min-h-[30px] cursor-pointer rounded border-0 text-[8px] ${role === 'buyer' ? 'bg-white font-bold text-[#6f3e25] shadow-[0_1px_3px_#33231213]' : 'bg-transparent text-[#82776d]'}`}
-              onClick={() => setRole('buyer')}
-              type="button"
-            >
-              Tea-shop owner
-            </button>
-            <button
-              className={`min-h-[30px] cursor-pointer rounded border-0 text-[8px] ${role === 'supplier' ? 'bg-white font-bold text-[#6f3e25] shadow-[0_1px_3px_#33231213]' : 'bg-transparent text-[#82776d]'}`}
-              onClick={() => setRole('supplier')}
-              type="button"
-            >
-              Supplier
-            </button>
-          </span>
-        </label>
+
         <label className="mt-3 flex flex-col gap-[5px] text-[9px] font-bold text-[#62564c]">
           Your name or business name
           <input
@@ -143,18 +150,7 @@ export function CreateAccount({ role, setRole, onCreateAccount, navigate }) {
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
-        <label className="mt-3 flex flex-col gap-[5px] text-[9px] font-bold text-[#62564c]">
-          Confirm password
-          <input
-            className="box-border min-h-9 w-full rounded-[5px] border border-[#e7ded4] px-[10px] py-2 text-[9px] text-[#43382f] outline-[#c79670]"
-            minLength="6"
-            placeholder="Confirm your password"
-            required
-            type="password"
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-          />
-        </label>
+
         <button
           className="mt-[15px] inline-flex min-h-[42px] w-full cursor-pointer items-center justify-center gap-[9px] rounded-[7px] border border-transparent bg-[#6f3e25] px-[17px] text-[12px] font-bold leading-[1.2] text-white shadow-[0_3px_8px_rgba(81,43,23,.13)] transition hover:-translate-y-px hover:bg-[#522d19] [&_.icon]:size-[15px]"
           type="submit"

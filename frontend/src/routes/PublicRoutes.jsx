@@ -5,6 +5,8 @@ export function createPublicRoutes({ HomePage, AboutPage, homeProps, navigate, a
 
   return [
     { path: '/', element: !authReady ? null : publicRedirect || <HomePage {...homeProps} /> },
+    { path: '/home', element: !authReady ? null : publicRedirect || <HomePage {...homeProps} /> },
+    { path: '/homepage', element: !authReady ? null : publicRedirect || <HomePage {...homeProps} /> },
     { path: '/about', element: !authReady ? null : publicRedirect || <AboutPage navigate={navigate} /> },
   ]
 }

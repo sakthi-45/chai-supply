@@ -1,93 +1,50 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Navigate, useNavigate, useRoutes } from 'react-router-dom'
-import { getIdTokenResult, onAuthStateChanged, signOut } from 'firebase/auth'
-import { products } from './data/marketplace.js'
-import { HomePage } from './pages/public/HomePage.jsx'
-import { AboutPage } from './pages/public/AboutPage.jsx'
-import { Login } from './pages/auth/login.jsx'
-import { CreateAccount } from './pages/auth/createaccount.jsx'
-import { Workspace } from './components/Workspace.jsx'
-import { createPublicRoutes } from './routes/PublicRoutes.jsx'
-import { createAuthRoutes } from './routes/AuthRoutes.jsx'
-import { createBuyerRoutes } from './routes/BuyerRoutes.jsx'
-import { createSellerRoutes } from './routes/SellerRoutes.jsx'
-import { createAdminRoutes } from './routes/AdminRoutes.jsx'
-import { createSharedRoutes } from './routes/SharedRoutes.jsx'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { routePaths } from './routes/routePaths.js'
-import { auth } from '../config/firebase.js'
-
-function getDashboardPage(userRole) {
-  if (userRole === 'admin') return 'adminDashboard'
-  return userRole === 'supplier' ? 'supplierDashboard' : 'buyerDashboard'
-}
-
-function getStoredUserRole(userId) {
-  const storedRole = window.localStorage.getItem(`chai-supply:role:${userId}`)
-  return storedRole === 'buyer' || storedRole === 'supplier' ? storedRole : null
-}
+import { useToast } from './hooks/useToast.js'
+import { useAuth, getDashboardPage } from './hooks/useAuth.js'
+import { useProducts } from './hooks/useProducts.js'
+import { useCart } from './hooks/useCart.js'
+import { useOrders } from './hooks/useOrders.js'
+import { AppRoutes } from './components/AppRoutes.jsx'
+import { Toast } from './components/Toast.jsx'
+import ChatBot from './components/chatbot.jsx'
 
 export function App() {
-  const [role, setRole] = useState('buyer')
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('All')
-  const [cart, setCart] = useState({ milk: 10, tea: 2, sugar: 1, biscuits: 2 })
-  const [selectedProduct, setSelectedProduct] = useState(products[0])
-  const [detailQuantity, setDetailQuantity] = useState(1)
-  const [faqOpen, setFaqOpen] = useState(0)
-  const [toast, setToast] = useState('')
-  const [orderPlaced, setOrderPlaced] = useState(false)
-  const [orderFilter, setOrderFilter] = useState('All')
-  const [authUser, setAuthUser] = useState(auth.currentUser)
-  const [authReady, setAuthReady] = useState(false)
   const routerNavigate = useNavigate()
+  const { toast, notify } = useToast()
+  const [faqOpen, setFaqOpen] = useState(0)
+  const [, setProfileVersion] = useState(0)
 
-  useEffect(() => {
-    let active = true
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setAuthUser(user)
-      setAuthReady(false)
+  // Products
+  const {
+    productList,
+    selectedProduct,
+    detailQuantity,
+    setDetailQuantity,
+    category,
+    setCategory,
+    query,
+    setQuery,
+    filteredProducts,
+    openProduct,
+    handleAddProduct,
+    handleEditProduct,
+    handleDeleteProduct,
+  } = useProducts(notify)
 
-      if (!user) {
-        setRole('buyer')
-        setAuthReady(true)
-        return
-      }
+  // Cart
+  const {
+    cart,
+    setCart,
+    cartCount,
+    cartProducts,
+    subtotal,
+    addToCart,
+    changeQuantity,
+  } = useCart(productList, notify)
 
-      try {
-        const { claims } = await getIdTokenResult(user, true)
-        if (!active || auth.currentUser?.uid !== user.uid) return
-        setRole(claims.admin === true ? 'admin' : getStoredUserRole(user.uid) || 'buyer')
-      } catch (error) {
-        console.error('Unable to verify the signed-in user role:', error)
-        if (!active || auth.currentUser?.uid !== user.uid) return
-        setRole(getStoredUserRole(user.uid) || 'buyer')
-      }
-
-      if (active && auth.currentUser?.uid === user.uid) {
-        setAuthReady(true)
-      }
-    })
-
-    return () => {
-      active = false
-      unsubscribe()
-    }
-  }, [])
-
-  const cartCount = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0)
-  const cartProducts = products.filter((product) => cart[product.id])
-  const subtotal = cartProducts.reduce((sum, product) => sum + product.price * cart[product.id], 0)
-  const filteredProducts = useMemo(() => products.filter((product) => {
-    const matchesCategory = category === 'All' || product.category === category
-    const matchesQuery = `${product.name} ${product.detail} ${product.category}`.toLowerCase().includes(query.toLowerCase())
-    return matchesCategory && matchesQuery
-  }), [category, query])
-
-  function notify(message) {
-    setToast(message)
-    window.setTimeout(() => setToast(''), 2600)
-  }
-
+  // Central Navigation
   function navigate(nextPage) {
     const path = routePaths[nextPage]
     if (!path) {
@@ -97,60 +54,51 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  async function logOut() {
-    try {
-      await signOut(auth)
-      navigate('home')
-    } catch (error) {
-      console.error('Error signing out:', error)
-    }
-  }
+  // Auth
+  const {
+    role,
+    authUser,
+    authReady,
+    completeAuth,
+    logOut,
+  } = useAuth((user) => {
+    fetchOrders(user)
+  })
 
-  function addToCart(product, quantity = 1) {
-    setCart((current) => ({ ...current, [product.id]: (current[product.id] || 0) + quantity }))
-    notify(`${product.name} added to your cart`)
-  }
-
-  function changeQuantity(productId, difference) {
-    setCart((current) => {
-      const quantity = (current[productId] || 0) + difference
-      if (quantity <= 0) {
-        const next = { ...current }
-        delete next[productId]
-        return next
-      }
-      return { ...current, [productId]: quantity }
-    })
-  }
-
-  function openProduct(product) {
-    setSelectedProduct(product)
-    setDetailQuantity(1)
-    navigate('product')
-  }
+  // Orders
+  const {
+    orders,
+    ordersError,
+    isSubmittingOrder,
+    checkoutError,
+    selectedOrder,
+    orderFilter,
+    setOrderFilter,
+    fetchOrders,
+    placeOrder,
+    payWithStripe,
+    openOrder,
+    handleUpdateOrderStatus,
+  } = useOrders({
+    role,
+    authUser,
+    cart,
+    cartProducts,
+    subtotal,
+    setCart,
+    notify,
+    navigate,
+    routerNavigate,
+  })
 
   const startShopping = () => navigate('catalogue')
   const dashboardPage = getDashboardPage(role)
   const dashboardPath = routePaths[dashboardPage]
-  const roleName = authUser?.displayName || authUser?.email?.split('@')[0] ||
-    (role === 'admin' ? 'Marketplace admin' : role === 'supplier' ? 'FreshFarm Dairy' : 'Ravi Kumar')
-  async function completeAuth(userRole, userId) {
-    const user = auth.currentUser
-    if (!user || user.uid !== userId) {
-      throw new Error('The signed-in account could not be verified.')
-    }
+  const roleName =
+    authUser?.displayName ||
+    authUser?.email?.split('@')[0] ||
+    (role === 'admin' ? 'Marketplace admin' : 'Ravi Kumar')
 
-    const { claims } = await getIdTokenResult(user, true)
-    const effectiveRole = claims.admin === true ? 'admin' : userRole
-    if (effectiveRole === 'admin') {
-      window.localStorage.removeItem(`chai-supply:role:${userId}`)
-    } else {
-      window.localStorage.setItem(`chai-supply:role:${userId}`, effectiveRole)
-    }
-    setRole(effectiveRole)
-    navigate(getDashboardPage(effectiveRole))
-    notify(`Welcome to ChaiSupply, ${roleName}`)
-  }
   const homeProps = {
     cartCount,
     faqOpen,
@@ -158,18 +106,20 @@ export function App() {
     startShopping,
     openAuth: () => navigate('login'),
     openCreateAccount: () => navigate('createAccount'),
-    onSignOut: logOut,
-    openProduct,
+    onSignOut: () => logOut(navigate),
+    openProduct: (product) => openProduct(product, navigate),
     addToCart,
     navigate,
   }
+
   const authProps = {
-    role,
-    setRole,
-    onSubmit: completeAuth,
-    onCreateAccount: completeAuth,
+    onSubmit: (userRole, userId, fallbackUser) =>
+      completeAuth(userRole, userId, fallbackUser, navigate, notify),
+    onCreateAccount: (userRole, userId, fallbackUser) =>
+      completeAuth(userRole, userId, fallbackUser, navigate, notify),
     navigate,
   }
+
   const workspaceProps = {
     role,
     roleName,
@@ -180,7 +130,7 @@ export function App() {
     category,
     setCategory,
     filteredProducts,
-    openProduct,
+    openProduct: (product) => openProduct(product, navigate),
     addToCart,
     selectedProduct,
     detailQuantity,
@@ -189,40 +139,49 @@ export function App() {
     cartProducts,
     subtotal,
     changeQuantity,
-    orderPlaced,
-    setOrderPlaced,
+    orders,
+    ordersError,
+    isSubmittingOrder,
+    checkoutError,
+    selectedOrder,
+    onPlaceOrder: placeOrder,
+    onPayWithStripe: payWithStripe,
+    onOpenOrder: openOrder,
+    onRefreshOrders: () => fetchOrders(),
     orderFilter,
     setOrderFilter,
+    products: productList,
+    onAddProduct: (prod) => handleAddProduct(prod, authUser),
+    onEditProduct: (prod) => handleEditProduct(prod, authUser),
+    onDeleteProduct: (prodId) => handleDeleteProduct(prodId, authUser),
+    onUpdateOrderStatus: handleUpdateOrderStatus,
     navigate,
     notify,
-    onSignOut: logOut,
+    onProfileUpdated: () => setProfileVersion((v) => v + 1),
+    onSignOut: () => logOut(navigate),
   }
-  function workspaceElement(page, allowedRole) {
-    if (!authReady) {
-      return null
-    }
-    if (!authUser) {
-      return <Navigate to="/login" replace />
-    }
-    if (allowedRole && role !== allowedRole) {
-      return <Navigate to={dashboardPath} replace />
-    }
-    return <Workspace {...workspaceProps} page={page} />
-  }
-  const pageContent = useRoutes([
-    ...createPublicRoutes({ HomePage, AboutPage, homeProps, navigate, authReady, authUser, dashboardPath: routePaths[dashboardPage] }),
-    ...createAuthRoutes({ Login, CreateAccount, authProps, authReady, authUser, dashboardPath: routePaths[dashboardPage] }),
-    ...createBuyerRoutes(workspaceElement),
-    ...createSellerRoutes(workspaceElement),
-    ...createAdminRoutes(workspaceElement),
-    ...createSharedRoutes(workspaceElement),
-    { path: '*', element: <Navigate to="/" replace /> },
-  ])
 
   return (
     <div className="app-shell [--brown:#6f3e25] [--brown-dark:#522d19] [--orange:#d9822b] [--green:#3f7d58] [--cream:#fff9f1] [--warm:#f8f4f0] [--card:#fff] [--ink:#252525] [--muted:#77716c] [--border:#e8ded2] [--shadow:0_8px_24px_rgba(66,_42,_26,_.07)] font-sans text-[#252525] bg-[#fff9f1] [min-height:100vh] [font-synthesis:none] [text-rendering:optimizeLegibility] antialiased [font-optical-sizing:auto] font-normal">
-      {pageContent}
-      {toast && <div className="toast [position:fixed] [z-index:10] [right:22px] [bottom:22px] [display:flex] [align-items:center] [gap:9px] [padding:12px_17px] [border:1px_solid_#e7ddd1] [border-radius:8px] [background:white] [color:#423329] [box-shadow:0_8px_30px_#33231224] [font-size:12px]" role="status"><span className="toast-check [display:grid] [width:20px] [height:20px] [place-items:center] [border-radius:50%] [color:white] [background:var(--green)] [font-size:12px]">✓</span>{toast}</div>}
+      {!authReady ? (
+        <div className="[min-height:100vh] [display:flex] [align-items:center] [justify-content:center] [color:var(--brown)] [font-size:14px] [font-weight:600]">
+          Loading ChaiSupply...
+        </div>
+      ) : (
+        <AppRoutes
+          homeProps={homeProps}
+          authProps={authProps}
+          workspaceProps={workspaceProps}
+          authReady={authReady}
+          authUser={authUser}
+          role={role}
+          dashboardPath={dashboardPath}
+          dashboardPage={dashboardPage}
+          navigate={navigate}
+        />
+      )}
+      <Toast message={toast} />
+      <ChatBot />
     </div>
   )
 }

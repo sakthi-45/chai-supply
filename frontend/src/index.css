@@ -11,6 +11,10 @@
   display: none;
 }
 
+.workspace-header-actions > .notification-button {
+  display: none;
+}
+
 .category-card:hover .category-photo {
   transform: scale(1.08);
 }

@@ -5,7 +5,7 @@ import { AuthLayout } from '../../components/AuthLayout.jsx'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../../../config/firebase.js'
 
-export function Login({ role, setRole, onSubmit, navigate }) {
+export function Login({ onSubmit, navigate }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -17,7 +17,7 @@ export function Login({ role, setRole, onSubmit, navigate }) {
     try {
       const user = await signInWithEmailAndPassword(auth, email, password)
       console.log('Logged in user:', user)
-      await onSubmit(role, user.user.uid)
+      await onSubmit('buyer', user.user.uid)
     } catch (error) {
       console.error(error)
 
@@ -28,6 +28,33 @@ export function Login({ role, setRole, onSubmit, navigate }) {
           typeof error.code === 'string'
           ? error.code
           : ''
+
+      // Check if user recently reset their password in the database
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+        const cleanEmail = email.trim().toLowerCase()
+        const checkRes = await fetch(`${API_URL}/api/auth/verify-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail, password }),
+        })
+        const checkData = await checkRes.json()
+        if (checkData.valid) {
+          const customUser = {
+            uid: checkData.userId || cleanEmail,
+            email: cleanEmail,
+            displayName: cleanEmail.split('@')[0],
+            getIdToken: async () => 'verified-user-token',
+          }
+          try {
+            window.localStorage.setItem('chai-supply:session', JSON.stringify(customUser))
+          } catch {}
+          await onSubmit('buyer', customUser.uid, customUser)
+          return
+        }
+      } catch (checkErr) {
+        console.warn('Database credential check failed:', checkErr)
+      }
 
       switch (errorCode) {
         case 'auth/user-not-found':
@@ -92,34 +119,6 @@ export function Login({ role, setRole, onSubmit, navigate }) {
           Pick up where your morning routine left off.
         </p>
 
-        {/* ROLE */}
-        <label className="mt-3 flex flex-col gap-[5px] text-[9px] font-bold text-[#62564c]">
-          I am a
-          <span className="grid grid-cols-2 gap-[3px] rounded-[5px] bg-[#f7f3ef] p-[3px]">
-            <button
-              className={`min-h-[30px] cursor-pointer rounded border-0 text-[8px] ${role === 'buyer'
-                  ? 'bg-white font-bold text-[#6f3e25] shadow-[0_1px_3px_#33231213]'
-                  : 'bg-transparent text-[#82776d]'
-                }`}
-              onClick={() => setRole('buyer')}
-              type="button"
-            >
-              Tea-shop owner
-            </button>
-
-            <button
-              className={`min-h-[30px] cursor-pointer rounded border-0 text-[8px] ${role === 'supplier'
-                  ? 'bg-white font-bold text-[#6f3e25] shadow-[0_1px_3px_#33231213]'
-                  : 'bg-transparent text-[#82776d]'
-                }`}
-              onClick={() => setRole('supplier')}
-              type="button"
-            >
-              Supplier
-            </button>
-          </span>
-        </label>
-
         {/* EMAIL */}
         <label className="mt-3 flex flex-col gap-[5px] text-[9px] font-bold text-[#62564c]">
           Email
@@ -156,10 +155,8 @@ export function Login({ role, setRole, onSubmit, navigate }) {
 
         {/* FORGOT PASSWORD */}
         <button
-          className="ml-auto mt-[9px] block cursor-pointer border-0 bg-transparent p-0 text-[8px] text-[#6f3e25]"
-          onClick={() =>
-            alert('Please contact support to reset your password.')
-          }
+          className="ml-auto mt-[9px] block cursor-pointer border-0 bg-transparent p-0 text-[8px] font-semibold text-[#6f3e25] transition-colors hover:text-[#522d19] hover:underline"
+          onClick={() => navigate('forgotPassword')}
           type="button"
         >
           Forgot password?
